@@ -1,0 +1,15 @@
+{
+  "name": "flight-deal-bot",
+  "version": "1.0.0",
+  "description": "Bot de alertas de vuelos baratos desde Argentina",
+  "type": "module",
+  "scripts": {
+    "start": "node run.js",
+    "dev": "vercel dev",
+    "test": "node scripts/test.js",
+    "deploy": "vercel --prod"
+  },
+  "engines": {
+    "node": "20.x"
+  }
+}
