@@ -9,7 +9,11 @@ import { findDeals, sendTelegramAlert } from "../lib/flightSearch.js";
 
 async function main() {
   console.log("🚀 Iniciando test del bot...\n");
-  console.log(`📍 Origen: ${process.env.ORIGIN_AIRPORT || "EZE"}`);
+  console.log(`📍 Nacionales: ${process.env.ORIG_NACIONALES || "EZE,AEP"}`);
+  console.log(`📍 Europa:     ${process.env.ORIG_EUROPA || "EZE,SCL,GRU"}`);
+  console.log(`📍 EEUU/Méx:   ${process.env.ORIG_NORTEAMERICA || "EZE,SCL"}`);  
+  console.log(`📍 Latam:      ${process.env.ORIG_LATAM || "EZE"}`);
+  console.log("\n");
   console.log(`💰 Precio máx: USD ${process.env.MAX_PRICE_USD || "9999"}`);
   console.log(`📉 Descuento mín: ${(parseFloat(process.env.DISCOUNT_THRESHOLD || "0.25") * 100).toFixed(0)}%`);
 

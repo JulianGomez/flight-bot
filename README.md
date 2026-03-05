@@ -1,9 +1,8 @@
 # ✈️ Flight Deal Bot — Alertas de Vuelos Baratos desde Argentina
 
-Bot gratuito que monitorea vuelos desde Buenos Aires (EZE) hacia destinos locales e
-internacionales y te avisa por Telegram cuando aparece una oferta real.
+Bot gratuito que monitorea vuelos desde Buenos Aires hacia destinos locales e internacionales y te avisa por Telegram cuando aparece una oferta real con link directo para comprar.
 
-**100% gratuito** usando: Amadeus API (free tier) + Vercel (cron jobs gratis) + Telegram Bot API (gratis).
+**100% gratuito** usando: Travelpayouts/Aviasales API + Render (cron jobs gratis) + Telegram Bot API (gratis).
 
 ---
 
@@ -12,48 +11,70 @@ internacionales y te avisa por Telegram cuando aparece una oferta real.
 ```
 flight-bot/
 ├── api/
-│   ├── cron.js          ← Vercel lo llama automáticamente cada 6hs
+│   ├── cron.js          ← Endpoint HTTP (legacy Vercel)
 │   └── status.js        ← Endpoint para ver el estado del bot
 ├── lib/
-│   └── flightSearch.js  ← Lógica de búsqueda y alertas
+│   └── flightSearch.js  ← Lógica de búsqueda y alertas (multi-proveedor)
 ├── scripts/
-│   └── test.js          ← Para testear localmente
+│   ├── test.js          ← Para testear localmente
+│   └── test-telegram.js ← Para testear solo Telegram
+├── run.js               ← Entrypoint para Render Cron Job
 ├── .env.example         ← Plantilla de variables de entorno
-├── vercel.json          ← Config del cron job
+├── vercel.json          ← Config legacy
 └── package.json
 ```
 
 ---
 
+## 🔌 Proveedores de vuelos soportados
+
+| Proveedor | Estado | Límite | Links de compra |
+|-----------|--------|--------|-----------------|
+| **Travelpayouts / Aviasales** | ✅ Principal | 200 req/hora | ✅ Con marker de afiliado |
+| **Amadeus** | 🔧 Dev/fallback | 2.000/mes (cierra jul 2026) | ❌ No incluye |
+
+Elegís el proveedor con `FLIGHT_PROVIDER=travelpayouts` o `FLIGHT_PROVIDER=amadeus` en `.env.local`.
+
+---
+
+## 🧠 Lógica de orígenes inteligentes
+
+El bot elige automáticamente desde qué aeropuerto buscar según el tipo de destino:
+
+| Tipo | Destinos ejemplo | Orígenes que consulta |
+|------|-----------------|----------------------|
+| Nacional | MDZ, BRC, IGR, USH | EZE + AEP |
+| Europa | MAD, LIS, CDG, FCO | EZE + SCL + GRU |
+| EEUU/México | MIA, JFK, CUN | EZE + SCL |
+| Latam | LIM, BOG, GRU | Solo EZE |
+
+Si encuentra un vuelo más barato saliendo desde Santiago o San Pablo, lo indica en el mensaje de Telegram.
+
+---
+
 ## 🚀 Setup paso a paso
 
-### 1️⃣ Obtener credenciales de Amadeus (5 min)
+### 1️⃣ Registrarte en Travelpayouts (5 min)
 
-1. Ir a **https://developers.amadeus.com** → Sign Up (gratis)
-2. Crear una nueva aplicación
-3. Copiar **Client ID** y **Client Secret**
-4. El plan gratuito incluye:
-   - 2.000 llamadas/mes en **producción**
-   - Datos reales de vuelos ✅
-   - Sin tarjeta de crédito ✅
+1. Ir a **app.travelpayouts.com** → Sign Up (gratis, sin tarjeta)
+2. Ir a **Programs → Aviasales** → Click en **"Join program"**
+3. Ir a tu **Perfil → API token** → copiar el token
+4. Tu **Marker** (ID de afiliado) lo ves abajo a la izquierda del dashboard
 
-> **Importante**: En `lib/flightSearch.js` hay una constante `AMADEUS_BASE`.
-> Para desarrollo usá `https://test.api.amadeus.com`.
-> Para producción (datos reales) cambiala a `https://api.amadeus.com`.
+> Los links que genera el bot incluyen tu marker automáticamente. Cada compra que haga alguien a través de esos links te genera comisiones (40% del ingreso de Aviasales, cookie de 30 días).
 
 ---
 
 ### 2️⃣ Crear el bot de Telegram (3 min)
 
-1. Abrir Telegram y buscar **@BotFather**
-2. Enviar `/newbot`
-3. Seguir los pasos → te da un **token** tipo `123456789:ABCdef...`
-4. Buscar tu nuevo bot y enviarle un mensaje (cualquier cosa)
-5. Abrir en el navegador:
+1. Abrir Telegram → buscar **@BotFather**
+2. Enviar `/newbot` → seguir los pasos → copiar el **token**
+3. Mandarle un mensaje a tu nuevo bot
+4. Abrir en el navegador (reemplazando con tu token):
    ```
    https://api.telegram.org/bot<TU_TOKEN>/getUpdates
    ```
-6. Buscar el campo `"id"` dentro de `"chat"` → ese es tu **Chat ID**
+5. Copiar el campo `"id"` dentro de `"chat"` → ese es tu **Chat ID**
 
 ---
 
@@ -65,33 +86,40 @@ Copiar `.env.example` como `.env.local`:
 cp .env.example .env.local
 ```
 
-Editar `.env.local` con tus datos:
+Completar `.env.local` con tus datos:
 
 ```env
+# Proveedor principal
+FLIGHT_PROVIDER=travelpayouts
+
+# Travelpayouts
+TRAVELPAYOUTS_TOKEN=tu_token_aqui
+TRAVELPAYOUTS_MARKER=tu_marker_aqui
+
+# Amadeus (solo para desarrollo/fallback)
 AMADEUS_API_KEY=tu_client_id
 AMADEUS_API_SECRET=tu_client_secret
+
+# Telegram
 TELEGRAM_BOT_TOKEN=123456789:ABCdef...
 TELEGRAM_CHAT_ID=123456789
-ORIGIN_AIRPORT=EZE
+
+# Configuración
 MAX_PRICE_USD=9999
 DISCOUNT_THRESHOLD=0.20
 CRON_SECRET=cualquier_clave_random
 ```
 
-**Configurar destinos** en la variable `DESTINATIONS` (ya viene con ejemplos).
-Podés agregar/quitar destinos con su código IATA y precio máximo en USD:
+**Destinos** en la variable `DESTINATIONS` (una sola línea, sin saltos):
 
-```json
-[
-  {"code":"MAD","name":"Madrid","emoji":"🇪🇸","maxPrice":650},
-  {"code":"MIA","name":"Miami","emoji":"🇺🇸","maxPrice":450}
-]
+```env
+DESTINATIONS=[{"code":"MAD","name":"Madrid","emoji":"🇪🇸","maxPrice":650},{"code":"MIA","name":"Miami","emoji":"🇺🇸","maxPrice":450}]
 ```
 
 **Códigos IATA útiles desde Argentina:**
 
-| Ciudad | Código | Precio promedio desde EZE |
-|--------|--------|--------------------------|
+| Ciudad | Código | Precio promedio |
+|--------|--------|----------------|
 | Madrid | MAD | ~USD 900-1100 |
 | Lisboa | LIS | ~USD 900-1100 |
 | Miami | MIA | ~USD 500-700 |
@@ -102,120 +130,127 @@ Podés agregar/quitar destinos con su código IATA y precio máximo en USD:
 | San Pablo | GRU | ~USD 120-200 |
 | Cancún | CUN | ~USD 400-600 |
 | Mendoza | MDZ | ~USD 50-80 |
+| Bariloche | BRC | ~USD 60-100 |
+| Iguazú | IGR | ~USD 60-100 |
 
 ---
 
 ### 4️⃣ Testear localmente
 
 ```bash
+# Test completo (búsqueda + Telegram)
 node scripts/test.js
+
+# Test solo Telegram (sin llamar a la API de vuelos)
+node scripts/test-telegram.js
 ```
 
-Si todo está bien verás las ofertas en consola y recibirás un mensaje en Telegram.
+Si todo está bien verás las ofertas en consola y recibirás un mensaje en Telegram con links de compra incluidos.
 
 ---
 
-### 5️⃣ Deploy en Vercel (gratuito)
+### 5️⃣ Deploy en Render (recomendado, gratuito)
 
-#### Opción A: Desde GitHub (recomendada)
+**Render** es la opción recomendada — soporta cron jobs nativos sin limitación de frecuencia en el free tier.
 
 ```bash
-# 1. Crear repo en GitHub y subir el proyecto
+# 1. Subir el proyecto a GitHub
 git init
 git add .
 git commit -m "Initial commit"
 git remote add origin https://github.com/tuusuario/flight-bot.git
 git push -u origin main
-
-# 2. Ir a vercel.com → New Project → importar tu repo
-# 3. En "Environment Variables" cargar todas las del .env.example
-# 4. Deploy!
 ```
 
-#### Opción B: Desde la CLI
+Luego en **render.com**:
+1. Sign Up con tu cuenta de GitHub
+2. New + → **Cron Job**
+3. Conectar tu repo `flight-bot`
+4. Configurar:
+   - **Start Command**: `node run.js`
+   - **Schedule**: `0 */6 * * *` (cada 6 horas)
+   - **Instance Type**: Free
+5. En **Environment Variables** cargar todas las variables del `.env.local`
+6. Click en **"Create Cron Job"**
+
+Desde ese momento el bot corre solo cada 6hs, sin necesidad de tener nada abierto en tu máquina.
+
+---
+
+### Hacer cambios y redesployar
+
+Cada vez que pusheás a GitHub, Render redeploya automáticamente:
 
 ```bash
-npm install -g vercel
-vercel login
-vercel --prod
-# Cargar las env vars cuando te las pida o desde el dashboard
+git add .
+git commit -m "descripción del cambio"
+git push
 ```
 
----
-
-### 6️⃣ Cargar las variables en Vercel
-
-En el dashboard de Vercel:
-1. Settings → Environment Variables
-2. Agregar cada variable del `.env.example`
-3. Redeploy para que tomen efecto
+Para pausar el bot temporalmente: Render dashboard → tu cron job → **"Suspend"**.
 
 ---
 
-## ⏰ ¿Cuándo corre el bot?
+## ⏰ Schedule del cron
 
-El `vercel.json` configura el cron para que corra **cada 6 horas**:
+Ejemplos de configuración:
 
-```json
-{
-  "crons": [{
-    "path": "/api/cron",
-    "schedule": "0 */6 * * *"
-  }]
-}
+| Schedule | Frecuencia |
+|----------|-----------|
+| `0 */6 * * *` | Cada 6 horas ✅ recomendado |
+| `0 */12 * * *` | Cada 12 horas |
+| `0 8,20 * * *` | A las 8am y 8pm UTC |
+
+---
+
+## 📱 Ejemplo de mensaje en Telegram
+
 ```
+✈️ 3 OFERTAS DETECTADAS desde Argentina
 
-Podés cambiarlo. Ejemplos de schedules:
-- Cada 6hs: `0 */6 * * *`
-- Cada 12hs: `0 */12 * * *`
-- Una vez por día a las 8am UTC-3: `0 11 * * *`
+🇪🇸 Lisboa (LIS)
+   💵 USD 538 (17% bajo el precio máximo)
+   📅 Salida: 2026-04
+   ✈️ Directo
+   🛫 Aerolínea: DT
+   🔀 Sale desde San Pablo 🇧🇷
+   🔗 Comprar vuelo aquí
 
-> **Límite del plan gratuito de Vercel**: 2 cron jobs, máximo 1 ejecución por día en el plan Hobby. Para más frecuencia, el plan Pro cuesta USD 20/mes.
+🇺🇸 Miami (MIA)
+   💵 USD 346 (23% bajo el precio máximo)
+   📅 Salida: 2026-04
+   ✈️ Directo
+   🛫 Aerolínea: H2
+   🔀 Sale desde Santiago 🇨🇱
+   🔗 Comprar vuelo aquí
 
----
-
-## 📊 Endpoints disponibles
-
-Una vez deployado:
-
-| URL | Descripción |
-|-----|-------------|
-| `https://tu-app.vercel.app/api/status` | Estado del bot y configuración |
-| `https://tu-app.vercel.app/api/status?search=1` | Búsqueda manual de prueba |
-| `https://tu-app.vercel.app/api/cron?secret=TU_SECRET` | Disparar búsqueda manualmente |
+Buscado: 4/3/2026, 02:03:45
+```
 
 ---
 
 ## 💡 Tips para encontrar más ofertas
 
-1. **Bajá el `DISCOUNT_THRESHOLD`** a `0.10` (10%) para recibir más alertas
-2. **Configurá `maxPrice`** por destino en lugar de usar el threshold automático
-3. **Agregá más destinos** — los vuelos a ciudades secundarias suelen tener más promociones
-4. **Temporadas bajas**: mayo-junio y agosto-septiembre suelen tener mejores precios a Europa
-
----
-
-## 🛑 Límites del plan gratuito de Amadeus
-
-- 2.000 llamadas API/mes en producción
-- Con ~18 destinos × 8 fechas = 144 llamadas por ejecución
-- A 4 ejecuciones/día = 576 llamadas/día → te quedás sin cuota en ~3 días
-
-**Solución recomendada**: Correr el bot **2 veces por día** (con el cron de Vercel) y reducir
-los destinos a los 8-10 que más te interesen.
+1. Bajá `maxPrice` en cada destino para recibir alertas más frecuentes
+2. Agregá más destinos — los vuelos a ciudades secundarias suelen tener mejores precios
+3. Temporadas bajas: mayo-junio y agosto-septiembre tienen mejores precios a Europa
+4. Si sale más barato desde SCL o GRU, el bot lo indica y el link ya apunta al vuelo correcto
 
 ---
 
 ## 🐛 Troubleshooting
 
-**"No se pudo obtener token de Amadeus"**
-→ Verificar AMADEUS_API_KEY y AMADEUS_API_SECRET. Asegurate de estar usando el endpoint correcto (test vs prod).
+**"Falta TRAVELPAYOUTS_TOKEN"**
+→ Verificar que `TRAVELPAYOUTS_TOKEN` esté en `.env.local` y que hayas copiado el token correcto desde tu perfil de Travelpayouts.
 
-**El bot corre pero no manda mensajes**
-→ Verificar TELEGRAM_BOT_TOKEN y TELEGRAM_CHAT_ID. Asegurate de haberle mandado un mensaje al bot antes.
+**El bot corre pero no manda mensajes a Telegram**
+→ Verificar `TELEGRAM_BOT_TOKEN` y `TELEGRAM_CHAT_ID`. Asegurate de haberle mandado al menos un mensaje al bot antes de obtener el Chat ID.
 
 **No encuentra ofertas**
-→ Probá bajando DISCOUNT_THRESHOLD a 0.05 o poniendo maxPrice manualmente más alto en cada destino del JSON.
+→ Bajá `maxPrice` en los destinos del JSON o cambiá `DISCOUNT_THRESHOLD` a `0.05`.
 
-**Error 429 (rate limit)**
-→ Amadeus está limitando las llamadas. Reducí la cantidad de destinos o aumentá el `sleep()` en `flightSearch.js`.
+**El JSON de DESTINATIONS da error**
+→ Asegurate de que esté todo en una sola línea sin saltos en `.env.local`.
+
+**"marker is not subscribed to campaign"**
+→ Tenés que unirte primero al programa de Aviasales en Travelpayouts: app.travelpayouts.com/programs/100/about
