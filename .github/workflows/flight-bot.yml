@@ -1,0 +1,61 @@
+name: Flight Deal Bot
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'  # cada 6 horas
+  workflow_dispatch:         # permite correrlo manualmente desde GitHub
+
+jobs:
+  run-bot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Instalar dependencias
+        run: npm install dotenv
+
+      - name: Correr el bot
+        env:
+          FLIGHT_PROVIDER: ${{ secrets.FLIGHT_PROVIDER }}
+          TRAVELPAYOUTS_TOKEN: ${{ secrets.TRAVELPAYOUTS_TOKEN }}
+          TRAVELPAYOUTS_MARKER: ${{ secrets.TRAVELPAYOUTS_MARKER }}
+          AMADEUS_API_KEY: ${{ secrets.AMADEUS_API_KEY }}
+          AMADEUS_API_SECRET: ${{ secrets.AMADEUS_API_SECRET }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          DESTINATIONS: ${{ secrets.DESTINATIONS }}
+          DEST_NACIONALES: ${{ secrets.DEST_NACIONALES }}
+          DEST_EUROPA: ${{ secrets.DEST_EUROPA }}
+          DEST_NORTEAMERICA: ${{ secrets.DEST_NORTEAMERICA }}
+          ORIG_NACIONALES: ${{ secrets.ORIG_NACIONALES }}
+          ORIG_EUROPA: ${{ secrets.ORIG_EUROPA }}
+          ORIG_NORTEAMERICA: ${{ secrets.ORIG_NORTEAMERICA }}
+          ORIG_LATAM: ${{ secrets.ORIG_LATAM }}
+          MAX_PRICE_USD: ${{ secrets.MAX_PRICE_USD }}
+          DISCOUNT_THRESHOLD: ${{ secrets.DISCOUNT_THRESHOLD }}
+        run: node run.js
+```
+
+---
+
+## Cómo cargar las variables en GitHub
+
+En lugar del `.env.local`, las variables van en **GitHub Secrets**:
+
+1. Ir a tu repo en GitHub → **Settings → Secrets and variables → Actions**
+2. Click en **"New repository secret"**
+3. Agregar cada variable una por una — exactamente los mismos nombres y valores que tenés en tu `.env.local`
+
+---
+
+## Pasos completos
+
+**1.** Creá la carpeta y el archivo en VS Code:
+```
+.github/
+  workflows/
+    flight-bot.yml
