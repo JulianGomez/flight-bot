@@ -2,8 +2,8 @@ name: Flight Deal Bot
 
 on:
   schedule:
-    - cron: '0 */6 * * *'  # cada 6 horas
-  workflow_dispatch:         # permite correrlo manualmente desde GitHub
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
 
 jobs:
   run-bot:
@@ -38,24 +38,3 @@ jobs:
           MAX_PRICE_USD: ${{ secrets.MAX_PRICE_USD }}
           DISCOUNT_THRESHOLD: ${{ secrets.DISCOUNT_THRESHOLD }}
         run: node run.js
-```
-
----
-
-## Cómo cargar las variables en GitHub
-
-En lugar del `.env.local`, las variables van en **GitHub Secrets**:
-
-1. Ir a tu repo en GitHub → **Settings → Secrets and variables → Actions**
-2. Click en **"New repository secret"**
-3. Agregar cada variable una por una — exactamente los mismos nombres y valores que tenés en tu `.env.local`
-
----
-
-## Pasos completos
-
-**1.** Creá la carpeta y el archivo en VS Code:
-```
-.github/
-  workflows/
-    flight-bot.yml
