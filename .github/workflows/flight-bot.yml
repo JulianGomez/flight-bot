@@ -2,7 +2,7 @@ name: Flight Deal Bot
 
 on:
   schedule:
-    - cron: '0 */6 * * *'
+    - cron: '0 11 * * *'
   workflow_dispatch:
 
 jobs:
@@ -28,13 +28,6 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           DESTINATIONS: ${{ secrets.DESTINATIONS }}
-          DEST_NACIONALES: ${{ secrets.DEST_NACIONALES }}
-          DEST_EUROPA: ${{ secrets.DEST_EUROPA }}
-          DEST_NORTEAMERICA: ${{ secrets.DEST_NORTEAMERICA }}
-          ORIG_NACIONALES: ${{ secrets.ORIG_NACIONALES }}
-          ORIG_EUROPA: ${{ secrets.ORIG_EUROPA }}
-          ORIG_NORTEAMERICA: ${{ secrets.ORIG_NORTEAMERICA }}
-          ORIG_LATAM: ${{ secrets.ORIG_LATAM }}
           MAX_PRICE_USD: ${{ secrets.MAX_PRICE_USD }}
           DISCOUNT_THRESHOLD: ${{ secrets.DISCOUNT_THRESHOLD }}
         run: node run.js
