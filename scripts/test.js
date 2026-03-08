@@ -34,6 +34,10 @@ async function main() {
       });
 
       console.log("\n📱 Enviando alerta a Telegram...");
+      console.log("\n--- VERIFICACIÓN ---");
+      deals.forEach(d => {
+        console.log(`${d.name}: USD ${d.price} | maxPrice: ${d.savings}% | link: ${d.bookingLink}`);
+      });
       await sendTelegramAlert(deals);
       console.log("✅ Mensaje enviado!");
     }

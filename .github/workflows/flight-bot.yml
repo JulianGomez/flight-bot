@@ -29,5 +29,4 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           DESTINATIONS: ${{ secrets.DESTINATIONS }}
           MAX_PRICE_USD: ${{ secrets.MAX_PRICE_USD }}
-          DISCOUNT_THRESHOLD: ${{ secrets.DISCOUNT_THRESHOLD }}
         run: node run.js
